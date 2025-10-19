@@ -109,8 +109,8 @@ O bun deve criar as pastas se ainda não estiver criadas(e não quebrar se ja es
 
 #### 1. Estrutura e Estilo Index.html
 - **Framework**: `petite-vue` com reatividade concisa, via CDN: src="https://unpkg.com/petite-vue@0.4.1/dist/petite-vue.iife.js"
-- **Escopo**: Lógica e estado num objeto no `v-scope` do `<body>`.
-- **Inicialização**: `PetiteVue.createApp().mount()`.
+- **Escopo**: `<body v-scope @vue:mounted="init">` (vazio, sem objeto inline)
+- **Inicialização**: `PetiteVue.createApp({...state e métodos}).mount()` no `<script>` final
 - **Javascript**: O mesmo do Estilo de código usado no BUN.
 - **Estilo HTML/CSS Compacto**:
     - **Atributos customizados**: `[BTN]`, `[FLEXR]` vs classes.
@@ -129,6 +129,11 @@ O bun deve criar as pastas se ainda não estiver criadas(e não quebrar se ja es
 - **Aba Textos**: Abas para cada "arquivo", após a ultime um botão `+` para novo. Ao selecionar arquivo(aba), ter o nome, conteúdo(textbox), checkbox "público" e botão de delete
 - **Autenticação**: prompt em loop até senha correta (sem página inicial). Implementar `authLoop()` com fetch POST para `/login`, headers JSON, body {password}, break no success.
 - **Debounce Visual**: 1.5s na edição do texto(ou nome), barra de progresso sutil no bottom do textbox indicando o salvamento automático iminente.
+
+#### 3. Sintaxe PetiteVue (IMPORTANTE)
+- **CORRETO**: `<body v-scope>` + `PetiteVue.createApp({...}).mount()` no script
+- **ERRADO**: `<body v-scope="{...}">` (causa erro de sintaxe no template)
+- Manter JavaScript limpo no `<script>`, não inline no HTML
 
 ## Troubleshooting
 

@@ -26,7 +26,55 @@ label{cursor:pointer}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
 </style>
 </head>
-<body v-scope="{
+<body v-scope @vue:mounted="authLoop" v-cloak>
+
+<div v-if="authed">
+    <div class="tabs-container" [FLEXR]>
+        <div class="tab" :class="{actv: mainTab==='uploads'}" @click="mainTab='uploads'">Uploads</div>
+        <div class="tab" :class="{actv: mainTab==='texts'}" @click="mainTab='texts'">Txts</div>
+    </div>
+
+    <div v-if="mainTab==='uploads'" [FLEXC]>
+        <div class="card">
+            <input type="file" @change="uploadFile">
+        </div>
+        <div class="grid">
+            <div v-for="f in files" class="card" [FLEXC]>
+                <strong>{{f.name}}</strong>
+                <span>{{formatSize(f.size)}}</span>
+                <div [FLEXR]>
+                    <a :href="'/files/'+f.name" download [BTN]>Download</a>
+                    <span [BTN] @click="deleteFile(f.name)">Delete</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div v-if="mainTab==='texts'" [FLEXC]>
+        <div class="tabs-container" [FLEXR]>
+            <div v-for="t in texts" class="tab" :class="{actv: currentText?.name===t.name}" @click="openText(t.name)">
+                {{t.name}}
+            </div>
+            <span [BTN] @click="newText">+</span>
+        </div>
+
+        <div v-if="currentText" class="card" [FLEXC]>
+            <input type="text" v-model="currentText.name" @input="onTextChange" placeholder="Text name">
+            <div class="textarea-wrapper">
+                <textarea v-model="currentText.content" @input="onTextChange" rows="15"></textarea>
+                <div class="progress-bar" :style="{width: saving ? '100%' : '0'}"></div>
+            </div>
+            <label>
+                <input type="checkbox" v-model="currentText.open" @change="onTextChange">
+                Public
+            </label>
+            <span [BTN] @click="deleteText(currentText.name)">Delete</span>
+        </div>
+    </div>
+</div>
+
+<script>
+PetiteVue.createApp({
     authed: false,
     mainTab: 'uploads',
     files: [],
@@ -94,9 +142,9 @@ label{cursor:pointer}
     },
 
     async deleteFile(name) {
-        if (!confirm(\`Delete \${name}?\`)) return;
+        if (!confirm(`Delete ${name}?`)) return;
         try {
-            await fetch(\`/files/\${name}\`, {method: 'DELETE'});
+            await fetch(`/files/${name}`, {method: 'DELETE'});
             await this.loadFiles();
         } catch (e) {
             console.error(e);
@@ -105,7 +153,7 @@ label{cursor:pointer}
 
     async openText(name) {
         try {
-            const res = await fetch(\`/txt/\${name}\`);
+            const res = await fetch(`/txt/${name}`);
             if (res.ok) {
                 const data = await res.json();
                 this.currentText = {...data, name};
@@ -124,7 +172,7 @@ label{cursor:pointer}
     async saveText() {
         if (!this.currentText?.name) return;
         try {
-            await fetch(\`/txt/\${this.currentText.name}\`, {
+            await fetch(`/txt/${this.currentText.name}`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
@@ -148,9 +196,9 @@ label{cursor:pointer}
     },
 
     async deleteText(name) {
-        if (!confirm(\`Delete \${name}?\`)) return;
+        if (!confirm(`Delete ${name}?`)) return;
         try {
-            await fetch(\`/txt/\${name}\`, {method: 'DELETE'});
+            await fetch(`/txt/${name}`, {method: 'DELETE'});
             if (this.currentText?.name === name) this.currentText = null;
             await this.loadTexts();
         } catch (e) {
@@ -159,57 +207,11 @@ label{cursor:pointer}
     },
 
     formatSize(bytes) {
-        return bytes < 1024 ? \`\${bytes} B\` :
-               bytes < 1024*1024 ? \`\${(bytes/1024).toFixed(1)} KB\` :
-               \`\${(bytes/1024/1024).toFixed(1)} MB\`;
+        return bytes < 1024 ? `${bytes} B` :
+               bytes < 1024*1024 ? `${(bytes/1024).toFixed(1)} KB` :
+               `${(bytes/1024/1024).toFixed(1)} MB`;
     }
-}" @vue:mounted="authLoop" v-cloak>
-
-<div v-if="authed">
-    <div class="tabs-container" [FLEXR]>
-        <div class="tab" :class="{actv: mainTab==='uploads'}" @click="mainTab='uploads'">Uploads</div>
-        <div class="tab" :class="{actv: mainTab==='texts'}" @click="mainTab='texts'">Txts</div>
-    </div>
-
-    <div v-if="mainTab==='uploads'" [FLEXC]>
-        <div class="card">
-            <input type="file" @change="uploadFile">
-        </div>
-        <div class="grid">
-            <div v-for="f in files" class="card" [FLEXC]>
-                <strong>{{f.name}}</strong>
-                <span>{{formatSize(f.size)}}</span>
-                <div [FLEXR]>
-                    <a :href="'/files/'+f.name" download [BTN]>Download</a>
-                    <span [BTN] @click="deleteFile(f.name)">Delete</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div v-if="mainTab==='texts'" [FLEXC]>
-        <div class="tabs-container" [FLEXR]>
-            <div v-for="t in texts" class="tab" :class="{actv: currentText?.name===t.name}" @click="openText(t.name)">
-                {{t.name}}
-            </div>
-            <span [BTN] @click="newText">+</span>
-        </div>
-
-        <div v-if="currentText" class="card" [FLEXC]>
-            <input type="text" v-model="currentText.name" @input="onTextChange" placeholder="Text name">
-            <div class="textarea-wrapper">
-                <textarea v-model="currentText.content" @input="onTextChange" rows="15"></textarea>
-                <div class="progress-bar" :style="{width: saving ? '100%' : '0'}"></div>
-            </div>
-            <label>
-                <input type="checkbox" v-model="currentText.open" @change="onTextChange">
-                Public
-            </label>
-            <span [BTN] @click="deleteText(currentText.name)">Delete</span>
-        </div>
-    </div>
-</div>
-
-<script>PetiteVue.createApp().mount()</script>
+}).mount();
+</script>
 </body>
 </html>
