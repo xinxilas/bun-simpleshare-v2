@@ -121,12 +121,20 @@ Bun.serve({
                 const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
                 const ua = req.headers.get('user-agent') || '';
                 sessions.set(sid, { ip, ua, expires: Date.now() + 30 * 60 * 1000 });
+                const cookieOptions = `sid=${sid}; HttpOnly; Path=/; Max-Age=1800; SameSite=Lax${finalSsl ? '; Secure' : ''}`;
                 return new Response(null, { 
                     status: 200, 
-                    headers: { 'Set-Cookie': `sid=${sid}; HttpOnly; Path=/; Max-Age=1800` } 
+                    headers: { 'Set-Cookie': cookieOptions } 
                 });
             }
             return new Response('Unauthorized', { status: 401 });
+        }
+
+        // Verificar sessão
+        if (path === '/auth' && method === 'GET') {
+            return new Response(auth(req) ? 'OK' : 'Unauthorized', { 
+                status: auth(req) ? 200 : 401 
+            });
         }
 
         // Textos públicos (sem auth)
