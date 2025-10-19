@@ -7,36 +7,40 @@
 <script src="https://unpkg.com/petite-vue@0.4.1/dist/petite-vue.iife.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:monospace;background:#f5f5f5;padding:10px}
+body{font-family:monospace;background:#f5f5f5;padding:10px;font-size:14px;line-height:1.5}
 [v-cloak]{display:none}
-[BTN]{cursor:pointer;border:1px solid #999;padding:6px 10px;background:#fff;border-radius:2px;display:inline-block}
+[BTN]{cursor:pointer;border:1px solid #999;padding:8px 14px;background:#fff;border-radius:2px;display:inline-block;font-size:14px}
 [BTN]:hover{background:#e8e8e8}
-[FLEXR]{display:flex;gap:8px;flex-wrap:wrap}
-[FLEXC]{display:flex;flex-direction:column;gap:8px}
-.card{border:1px solid #ccc;padding:12px;background:#fff;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,0.05)}
-.tab{border:1px solid #999;padding:6px 12px;background:#fff;cursor:pointer;border-radius:2px 2px 0 0;border-bottom:none}
+[FLEXR]{display:flex;gap:10px;flex-wrap:wrap}
+[FLEXC]{display:flex;flex-direction:column;gap:10px}
+.card{border:1px solid #ccc;padding:15px;background:#fff;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,0.05)}
+.tab{border:1px solid #999;padding:8px 16px;background:#fff;cursor:pointer;border-radius:2px 2px 0 0;border-bottom:none;font-size:14px;white-space:nowrap}
 .tab.actv{background:#e0e0e0;font-weight:bold}
-.tabs-container{border-bottom:1px solid #999;margin-bottom:10px}
-.progress-bar{height:2px;background:#4caf50;width:0;transition:width 1.5s linear;position:absolute;bottom:0;left:0}
+.tabs-container{border-bottom:1px solid #999;margin-bottom:15px;display:flex;gap:2px;flex-wrap:wrap}
+.progress-bar{height:3px;background:#e0e0e0;position:relative;margin-top:5px;border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:#4caf50;width:0%;transition:none}
 .textarea-wrapper{position:relative}
-textarea{width:100%;font-family:monospace;border:1px solid #999;padding:8px;resize:vertical;border-radius:2px}
-input[type="text"]{border:1px solid #999;padding:6px;font-family:monospace;border-radius:2px}
-input[type="file"]{border:1px solid #999;padding:4px;border-radius:2px}
-label{cursor:pointer}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+textarea{width:100%;font-family:monospace;border:1px solid #999;padding:10px;resize:vertical;border-radius:2px;font-size:14px}
+input[type="text"]{width:100%;border:1px solid #999;padding:8px;font-family:monospace;border-radius:2px;font-size:14px}
+input[type="file"]{border:1px solid #999;padding:6px;border-radius:2px;font-size:14px}
+label{cursor:pointer;font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
 </style>
 </head>
 <body v-scope @vue:mounted="authLoop" v-cloak>
 
 <div v-if="authed">
-    <div class="tabs-container" [FLEXR]>
-        <div class="tab" :class="{actv: mainTab==='uploads'}" @click="mainTab='uploads'">Uploads</div>
-        <div class="tab" :class="{actv: mainTab==='texts'}" @click="mainTab='texts'">Txts</div>
+    <div class="tabs-container">
+        <div class="tab" :class="{actv: mainTab==='texts'}" @click="mainTab='texts'; if (texts.length && !currentText) openText(texts[0].name)">📝 Txts</div>
+        <div class="tab" :class="{actv: mainTab==='uploads'}" @click="mainTab='uploads'">📁 Uploads</div>
     </div>
 
     <div v-if="mainTab==='uploads'" [FLEXC]>
         <div class="card">
-            <input type="file" @change="uploadFile">
+            <label [BTN] style="display:inline-block">
+                Choose File
+                <input type="file" @change="uploadFile" style="display:none">
+            </label>
         </div>
         <div class="grid">
             <div v-for="f in files" class="card" [FLEXC]>
@@ -51,18 +55,20 @@ label{cursor:pointer}
     </div>
 
     <div v-if="mainTab==='texts'" [FLEXC]>
-        <div class="tabs-container" [FLEXR]>
+        <div class="tabs-container">
             <div v-for="t in texts" class="tab" :class="{actv: currentText?.name===t.name}" @click="openText(t.name)">
                 {{t.name}}
             </div>
-            <span [BTN] @click="newText">+</span>
+            <div class="tab" @click="newText">+</div>
         </div>
 
         <div v-if="currentText" class="card" [FLEXC]>
             <input type="text" v-model="currentText.name" @input="onTextChange" placeholder="Text name">
             <div class="textarea-wrapper">
                 <textarea v-model="currentText.content" @input="onTextChange" rows="15"></textarea>
-                <div class="progress-bar" :style="{width: saving ? '100%' : '0'}"></div>
+                <div class="progress-bar">
+                    <div class="progress-fill" :style="{width: progressWidth + '%'}"></div>
+                </div>
             </div>
             <label>
                 <input type="checkbox" v-model="currentText.open" @change="onTextChange">
@@ -76,14 +82,26 @@ label{cursor:pointer}
 <script>
 PetiteVue.createApp({
     authed: false,
-    mainTab: 'uploads',
+    mainTab: 'texts',
     files: [],
     texts: [],
     currentText: null,
     debounceTimer: null,
-    saving: false,
+    progressInterval: null,
+    progressWidth: 0,
 
     async authLoop() {
+        try {
+            const res = await fetch('/auth');
+            if (res.ok) {
+                this.authed = true;
+                this.init();
+                return;
+            }
+        } catch (e) {
+            console.error(e);
+        }
+        
         while (!this.authed) {
             const pass = prompt('Password:');
             if (!pass) continue;
@@ -122,6 +140,9 @@ PetiteVue.createApp({
         try {
             const res = await fetch('/txts');
             this.texts = res.ok ? await res.json() : [];
+            if (this.texts.length > 0 && !this.currentText) {
+                await this.openText(this.texts[0].name);
+            }
         } catch (e) {
             console.error(e);
         }
@@ -165,8 +186,22 @@ PetiteVue.createApp({
 
     onTextChange() {
         clearTimeout(this.debounceTimer);
-        this.saving = true;
-        this.debounceTimer = setTimeout(() => this.saveText(), 1500);
+        clearInterval(this.progressInterval);
+        this.progressWidth = 0;
+        
+        const startTime = Date.now();
+        const duration = 1500;
+        
+        this.progressInterval = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            this.progressWidth = Math.min((elapsed / duration) * 100, 100);
+        }, 50);
+        
+        this.debounceTimer = setTimeout(() => {
+            clearInterval(this.progressInterval);
+            this.progressWidth = 100;
+            this.saveText();
+        }, duration);
     },
 
     async saveText() {
@@ -181,16 +216,23 @@ PetiteVue.createApp({
                 })
             });
             await this.loadTexts();
+            setTimeout(() => { this.progressWidth = 0; }, 500);
         } catch (e) {
             console.error(e);
-        } finally {
-            this.saving = false;
+            this.progressWidth = 0;
         }
     },
 
     async newText() {
-        const name = prompt('Text name:');
-        if (!name) return;
+        let name = 'new';
+        let counter = 1;
+        const existingNames = this.texts.map(t => t.name);
+        
+        while (existingNames.includes(name)) {
+            counter++;
+            name = `new${counter}`;
+        }
+        
         this.currentText = {name, content: '', open: false};
         await this.saveText();
     },
