@@ -77,15 +77,15 @@ label{cursor:pointer;font-size:14px;display:flex;align-items:center}
 
         <div v-if="currentText" class="text-card">
             <div class="text-controls">
-                <input type="text" v-model="currentText.name" @input="onTextChange" placeholder="Text name">
+                <input type="text" :value="currentText?.name||''" @input="currentText && (currentText.name=$event.target.value,onTextChange())" placeholder="Text name">
                 <label btn>
-                    <input type="checkbox" v-model="currentText.open" @change="onTextChange">
+                    <input type="checkbox" :checked="currentText?.open" @change="currentText && (currentText.open=$event.target.checked,onTextChange())">
                     <span>🌐 Public</span>
                 </label>
-                <span btn @click="deleteText(currentText.name)">🗑️ Delete</span>
+                <span btn @click="currentText && deleteText(currentText.name)">🗑️ Delete</span>
             </div>
             <div class="textarea-wrapper">
-                <textarea v-model="currentText.content" @input="onTextChange"></textarea>
+                <textarea :value="currentText?.content||''" @input="currentText && (currentText.content=$event.target.value,onTextChange())"></textarea>
                 <div class="progress-bar">
                     <div class="progress-fill" :style="{width: progressWidth + '%'}"></div>
                 </div>
@@ -101,199 +101,97 @@ label{cursor:pointer;font-size:14px;display:flex;align-items:center}
 
 <script>
 PetiteVue.createApp({
-    authed: false,
-    mainTab: 'texts',
-    files: [],
-    texts: [],
-    currentText: null,
-    debounceTimer: null,
-    progressInterval: null,
-    progressWidth: 0,
-    savedTab: null,
-
+    authed: false, mainTab: 'texts', files: [], texts: [], currentText: null,
+    debounceTimer: null, progressInterval: null, progressWidth: 0, savedTab: null,
     async authLoop() {
         try {
             const res = await fetch('/auth');
-            if (res.ok) {
-                this.authed = true;
-                this.init();
-                return;
-            }
-        } catch (e) {
-            console.error(e);
-        }
-        
+            if (res.ok) { this.authed = true; this.init(); return; }
+        } catch (e) { console.error(e); }
         while (!this.authed) {
             const pass = prompt('Password:');
             if (!pass) continue;
             try {
-                const res = await fetch('/login', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({password: pass})
-                });
-                if (res.ok) {
-                    this.authed = true;
-                    this.init();
-                    break;
-                }
-            } catch (e) {
-                console.error(e);
-            }
+                const res = await fetch('/login', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({password: pass})});
+                if (res.ok) { this.authed = true; this.init(); break; }
+            } catch (e) { console.error(e); }
         }
     },
-
-    async init() {
-        await this.loadFiles();
-        await this.loadTexts();
-    },
-
+    async init() { await this.loadFiles(); await this.loadTexts(); },
     async loadFiles() {
-        try {
-            const res = await fetch('/files');
-            this.files = res.ok ? await res.json() : [];
-        } catch (e) {
-            console.error(e);
-        }
+        try { const res = await fetch('/files'); this.files = res.ok ? await res.json() : []; }
+        catch (e) { console.error(e); }
     },
-
     async loadTexts() {
         try {
             const res = await fetch('/txts');
             this.texts = res.ok ? await res.json() : [];
-            if (this.texts.length > 0 && !this.currentText) {
-                await this.openText(this.texts[0].name);
-            }
-        } catch (e) {
-            console.error(e);
-        }
+            if (this.texts.length > 0 && !this.currentText) await this.openText(this.texts[0].name);
+        } catch (e) { console.error(e); }
     },
-
     async uploadFile(e) {
         const file = e.target.files[0];
         if (!file) return;
         const formData = new FormData();
         formData.append('file', file);
-        try {
-            await fetch('/upload', {method: 'POST', body: formData});
-            await this.loadFiles();
-            e.target.value = '';
-        } catch (e) {
-            console.error(e);
-        }
+        try { await fetch('/upload', {method: 'POST', body: formData}); await this.loadFiles(); e.target.value = ''; }
+        catch (e) { console.error(e); }
     },
-
     async deleteFile(name) {
         if (!confirm(`Delete ${name}?`)) return;
-        try {
-            await fetch(`/files/${name}`, {method: 'DELETE'});
-            await this.loadFiles();
-        } catch (e) {
-            console.error(e);
-        }
+        try { await fetch(`/files/${name}`, {method: 'DELETE'}); await this.loadFiles(); }
+        catch (e) { console.error(e); }
     },
-
     async openText(name) {
         this.savedTab = null;
         try {
             const res = await fetch(`/txt/${name}`);
-            if (res.ok) {
-                const data = await res.json();
-                this.currentText = {...data, name, originalName: name};
-            }
-        } catch (e) {
-            console.error(e);
-        }
+            if (res.ok) { const data = await res.json(); this.currentText = {...data, name, originalName: name}; }
+        } catch (e) { console.error(e); }
     },
-
     onTextChange() {
-        clearTimeout(this.debounceTimer);
-        clearInterval(this.progressInterval);
-        this.progressWidth = 0;
-        
-        const startTime = Date.now();
-        const duration = 1500;
-        
+        if (!this.currentText) return;
+        clearTimeout(this.debounceTimer); clearInterval(this.progressInterval); this.progressWidth = 0;
+        const startTime = Date.now(), duration = 1500;
         this.progressInterval = setInterval(() => {
             const elapsed = Date.now() - startTime;
             this.progressWidth = Math.min((elapsed / duration) * 100, 100);
         }, 50);
-        
-        this.debounceTimer = setTimeout(() => {
-            clearInterval(this.progressInterval);
-            this.progressWidth = 100;
-            this.saveText();
-        }, duration);
+        this.debounceTimer = setTimeout(() => { clearInterval(this.progressInterval); this.progressWidth = 100; this.saveText(); }, duration);
     },
-
     async saveText() {
         if (!this.currentText?.name) return;
-        
         const oldName = this.currentText.originalName || this.currentText.name;
         const newName = this.currentText.name;
-        
         try {
-            // Se mudou o nome, deletar o arquivo antigo
-            if (oldName !== newName) {
-                await fetch(`/txt/${oldName}`, {method: 'DELETE'});
-            }
-            
-            // Salvar com o nome novo (ou mesmo)
-            await fetch(`/txt/${newName}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    content: this.currentText.content,
-                    open: this.currentText.open
-                })
-            });
-            
-            // Atualizar originalName para o nome atual
+            if (oldName !== newName) await fetch(`/txt/${oldName}`, {method: 'DELETE'});
+            await fetch(`/txt/${newName}`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({content: this.currentText.content, open: this.currentText.open})});
             this.currentText.originalName = newName;
-            
             await this.loadTexts();
             this.savedTab = newName;
-            setTimeout(() => { 
-                this.progressWidth = 0;
-            }, 500);
-        } catch (e) {
-            console.error(e);
-            this.progressWidth = 0;
-        }
+            setTimeout(() => { this.progressWidth = 0; }, 500);
+        } catch (e) { console.error(e); this.progressWidth = 0; }
     },
-
     async newText() {
         this.savedTab = null;
-        let name = 'new';
-        let counter = 1;
+        let name = 'new', counter = 1;
         const existingNames = this.texts.map(t => t.name);
-        
-        while (existingNames.includes(name)) {
-            counter++;
-            name = `new${counter}`;
-        }
-        
+        while (existingNames.includes(name)) { counter++; name = `new${counter}`; }
         this.currentText = {name, content: '', open: false, originalName: name};
         await this.saveText();
     },
-
     async deleteText(name) {
         if (!confirm(`Delete ${name}?`)) return;
+        clearTimeout(this.debounceTimer); clearInterval(this.progressInterval); this.progressWidth = 0;
         try {
             await fetch(`/txt/${name}`, {method: 'DELETE'});
-            if (this.currentText?.name === name) {
-                this.currentText = null;
-            }
+            if (this.currentText?.name === name) this.currentText = null;
             await this.loadTexts();
-        } catch (e) {
-            console.error(e);
-        }
+            if (this.texts.length > 0 && !this.currentText) await this.openText(this.texts[0].name);
+        } catch (e) { console.error(e); }
     },
-
     formatSize(bytes) {
-        return bytes < 1024 ? `${bytes} B` :
-               bytes < 1024*1024 ? `${(bytes/1024).toFixed(1)} KB` :
-               `${(bytes/1024/1024).toFixed(1)} MB`;
+        return bytes < 1024 ? `${bytes} B` : bytes < 1024*1024 ? `${(bytes/1024).toFixed(1)} KB` : `${(bytes/1024/1024).toFixed(1)} MB`;
     }
 }).mount();
 </script>
