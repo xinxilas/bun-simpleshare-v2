@@ -142,9 +142,18 @@ Bun.serve({
             const name = sanitize(path.split('/')[2]);
             const txtPath = `${textsDir}/${name}.txt`;
             if (textsMeta[name]?.open && existsSync(txtPath)) {
-                return new Response(readFileSync(txtPath), { 
-                    headers: { 'Content-Type': 'application/json' } 
-                });
+                const content = readFileSync(txtPath, 'utf8');
+                const acceptHeader = req.headers.get('accept') || '';
+                const isJsonRequest = acceptHeader.includes('application/json');
+                
+                if (isJsonRequest) {
+                    // Fetch/AJAX: retorna JSON completo
+                    return new Response(content, { headers: { 'Content-Type': 'application/json' } });
+                } else {
+                    // Browser direto: retorna apenas content em plain text
+                    const data = JSON.parse(content);
+                    return new Response(data.content, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+                }
             }
         }
 
@@ -207,9 +216,19 @@ Bun.serve({
             const name = sanitize(path.split('/')[2]);
             const txtPath = `${textsDir}/${name}.txt`;
             if (!existsSync(txtPath)) return new Response('Not Found', { status: 404 });
-            return new Response(readFileSync(txtPath), { 
-                headers: { 'Content-Type': 'application/json' } 
-            });
+            
+            const content = readFileSync(txtPath, 'utf8');
+            const acceptHeader = req.headers.get('accept') || '';
+            const isJsonRequest = acceptHeader.includes('application/json');
+            
+            if (isJsonRequest) {
+                // Fetch/AJAX: retorna JSON completo
+                return new Response(content, { headers: { 'Content-Type': 'application/json' } });
+            } else {
+                // Browser direto: retorna apenas content em plain text
+                const data = JSON.parse(content);
+                return new Response(data.content, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+            }
         }
 
         // Listar textos

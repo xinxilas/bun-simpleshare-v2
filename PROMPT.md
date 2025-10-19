@@ -56,8 +56,8 @@ O bun deve criar as pastas se ainda não estiver criadas(e não quebrar se ja es
 - `GET /files` → lista arquivos [{name, size}]
 - `GET /files/:name` → download
 - `DELETE /files/:name` → deleta arquivo
-- `POST /txt/:name` → salva em `/data/texts/:name.txt` com JSON `{content, open?}`
-- `GET /txt/:name` → retorna texto (público se `open:1` no metadata)
+- `POST /txt/:name` → salva em `/data/texts/:name.txt` com JSON `{content, name, open?}`
+- `GET /txt/:name` → retorna "txt". Se header `Accept: application/json` → JSON completo. Senão (browser) → `content` como plain text. Público se `open:1` no metadata.
 - `GET /txts` → lista textos [{name, open}]
 - `DELETE /txt/:name` → deleta texto
 - Auth em todas exceto `/`, `/login`, textos públicos
@@ -131,7 +131,7 @@ O bun deve criar as pastas se ainda não estiver criadas(e não quebrar se ja es
 - **Layout Horizontal**: Abas e controles lado a lado (flexbox), não empilhados. Aproveitar viewport height (`height:100%`, `flex:1`, `min-height:0`).
 - **Espaçamento Simétrico**: Gap/padding consistentes (10px/15px), evitar margins isolados, usar flexbox gaps.
 - **Navegação**: Abas principais topo: "📝 Txts" (padrão), "📁 Uploads". Sub-abas horizontais para textos individuais.
-- **Aba Textos**: Abas horizontais para cada texto, botão `+` ao final. Auto-seleciona primeiro texto ao abrir. Cria "new/new2/new3" automaticamente.
+- **Aba Textos**: Abas horizontais, aba botão `+` que cira arquivo nome "new" e "new2/new3". Fetch header `Accept: application/json` para receber JSON completo.
 - **Autenticação**: Valida sessão (`GET /auth`) antes de prompt. Loop até senha correta.
 - **Feedback Save**: Progress bar 1.5s com preenchimento visual (interval 50ms), aba fica verde ao salvar, reseta após 500ms. A cada input reseta debounce E progress bar (width:0, restart interval).
 

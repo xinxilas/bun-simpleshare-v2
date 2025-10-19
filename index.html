@@ -145,7 +145,7 @@ PetiteVue.createApp({
     async openText(name) {
         this.savedTab = null;
         try {
-            const res = await fetch(`/txt/${name}`);
+            const res = await fetch(`/txt/${name}`, {headers: {'Accept': 'application/json'}});
             if (res.ok) { const data = await res.json(); this.currentText = {...data, name, originalName: name}; }
         } catch (e) { console.error(e); }
     },
