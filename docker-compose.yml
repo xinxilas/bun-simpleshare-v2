@@ -5,7 +5,7 @@ services:
     environment:
       - DOMAIN=your_domain.com
       - EMAIL=your_email@example.com
-      - PASSWORD=changeme123
+      - PASSWORD=${PASSWORD}
     network_mode: host
     volumes:
       - ./server.js:/app/server.js
