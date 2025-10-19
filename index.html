@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SimpleShare</title>
+<script src="https://unpkg.com/petite-vue@0.4.1/dist/petite-vue.iife.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:monospace;background:#f5f5f5;padding:10px}
+[v-cloak]{display:none}
+[BTN]{cursor:pointer;border:1px solid #999;padding:6px 10px;background:#fff;border-radius:2px;display:inline-block}
+[BTN]:hover{background:#e8e8e8}
+[FLEXR]{display:flex;gap:8px;flex-wrap:wrap}
+[FLEXC]{display:flex;flex-direction:column;gap:8px}
+.card{border:1px solid #ccc;padding:12px;background:#fff;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,0.05)}
+.tab{border:1px solid #999;padding:6px 12px;background:#fff;cursor:pointer;border-radius:2px 2px 0 0;border-bottom:none}
+.tab.actv{background:#e0e0e0;font-weight:bold}
+.tabs-container{border-bottom:1px solid #999;margin-bottom:10px}
+.progress-bar{height:2px;background:#4caf50;width:0;transition:width 1.5s linear;position:absolute;bottom:0;left:0}
+.textarea-wrapper{position:relative}
+textarea{width:100%;font-family:monospace;border:1px solid #999;padding:8px;resize:vertical;border-radius:2px}
+input[type="text"]{border:1px solid #999;padding:6px;font-family:monospace;border-radius:2px}
+input[type="file"]{border:1px solid #999;padding:4px;border-radius:2px}
+label{cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+</style>
+</head>
+<body v-scope="{
+    authed: false,
+    mainTab: 'uploads',
+    files: [],
+    texts: [],
+    currentText: null,
+    debounceTimer: null,
+    saving: false,
+
+    async authLoop() {
+        while (!this.authed) {
+            const pass = prompt('Password:');
+            if (!pass) continue;
+            try {
+                const res = await fetch('/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({password: pass})
+                });
+                if (res.ok) {
+                    this.authed = true;
+                    this.init();
+                    break;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    },
+
+    async init() {
+        await this.loadFiles();
+        await this.loadTexts();
+    },
+
+    async loadFiles() {
+        try {
+            const res = await fetch('/files');
+            this.files = res.ok ? await res.json() : [];
+        } catch (e) {
+            console.error(e);
+        }
+    },
+
+    async loadTexts() {
+        try {
+            const res = await fetch('/txts');
+            this.texts = res.ok ? await res.json() : [];
+        } catch (e) {
+            console.error(e);
+        }
+    },
+
+    async uploadFile(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+            await fetch('/upload', {method: 'POST', body: formData});
+            await this.loadFiles();
+            e.target.value = '';
+        } catch (e) {
+            console.error(e);
+        }
+    },
+
+    async deleteFile(name) {
+        if (!confirm(\`Delete \${name}?\`)) return;
+        try {
+            await fetch(\`/files/\${name}\`, {method: 'DELETE'});
+            await this.loadFiles();
+        } catch (e) {
+            console.error(e);
+        }
+    },
+
+    async openText(name) {
+        try {
+            const res = await fetch(\`/txt/\${name}\`);
+            if (res.ok) {
+                const data = await res.json();
+                this.currentText = {...data, name};
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    },
+
+    onTextChange() {
+        clearTimeout(this.debounceTimer);
+        this.saving = true;
+        this.debounceTimer = setTimeout(() => this.saveText(), 1500);
+    },
+
+    async saveText() {
+        if (!this.currentText?.name) return;
+        try {
+            await fetch(\`/txt/\${this.currentText.name}\`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    content: this.currentText.content,
+                    open: this.currentText.open
+                })
+            });
+            await this.loadTexts();
+        } catch (e) {
+            console.error(e);
+        } finally {
+            this.saving = false;
+        }
+    },
+
+    async newText() {
+        const name = prompt('Text name:');
+        if (!name) return;
+        this.currentText = {name, content: '', open: false};
+        await this.saveText();
+    },
+
+    async deleteText(name) {
+        if (!confirm(\`Delete \${name}?\`)) return;
+        try {
+            await fetch(\`/txt/\${name}\`, {method: 'DELETE'});
+            if (this.currentText?.name === name) this.currentText = null;
+            await this.loadTexts();
+        } catch (e) {
+            console.error(e);
+        }
+    },
+
+    formatSize(bytes) {
+        return bytes < 1024 ? \`\${bytes} B\` :
+               bytes < 1024*1024 ? \`\${(bytes/1024).toFixed(1)} KB\` :
+               \`\${(bytes/1024/1024).toFixed(1)} MB\`;
+    }
+}" @vue:mounted="authLoop" v-cloak>
+
+<div v-if="authed">
+    <div class="tabs-container" [FLEXR]>
+        <div class="tab" :class="{actv: mainTab==='uploads'}" @click="mainTab='uploads'">Uploads</div>
+        <div class="tab" :class="{actv: mainTab==='texts'}" @click="mainTab='texts'">Txts</div>
+    </div>
+
+    <div v-if="mainTab==='uploads'" [FLEXC]>
+        <div class="card">
+            <input type="file" @change="uploadFile">
+        </div>
+        <div class="grid">
+            <div v-for="f in files" class="card" [FLEXC]>
+                <strong>{{f.name}}</strong>
+                <span>{{formatSize(f.size)}}</span>
+                <div [FLEXR]>
+                    <a :href="'/files/'+f.name" download [BTN]>Download</a>
+                    <span [BTN] @click="deleteFile(f.name)">Delete</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div v-if="mainTab==='texts'" [FLEXC]>
+        <div class="tabs-container" [FLEXR]>
+            <div v-for="t in texts" class="tab" :class="{actv: currentText?.name===t.name}" @click="openText(t.name)">
+                {{t.name}}
+            </div>
+            <span [BTN] @click="newText">+</span>
+        </div>
+
+        <div v-if="currentText" class="card" [FLEXC]>
+            <input type="text" v-model="currentText.name" @input="onTextChange" placeholder="Text name">
+            <div class="textarea-wrapper">
+                <textarea v-model="currentText.content" @input="onTextChange" rows="15"></textarea>
+                <div class="progress-bar" :style="{width: saving ? '100%' : '0'}"></div>
+            </div>
+            <label>
+                <input type="checkbox" v-model="currentText.open" @change="onTextChange">
+                Public
+            </label>
+            <span [BTN] @click="deleteText(currentText.name)">Delete</span>
+        </div>
+    </div>
+</div>
+
+<script>PetiteVue.createApp().mount()</script>
+</body>
+</html>

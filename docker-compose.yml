@@ -1,0 +1,15 @@
+services:
+  app:
+    image: oven/bun:1-alpine
+    command: sh -c "apk add --no-cache iproute2 certbot && bun /app/server.js"
+    environment:
+      - DOMAIN=your_domain.com
+      - EMAIL=your_email@example.com
+      - PASSWORD=changeme123
+    network_mode: host
+    volumes:
+      - ./server.js:/app/server.js
+      - ./index.html:/app/index.html
+      - ./data/uploads:/data/uploads
+      - ./data/texts:/data/texts
+      - ./ssl:/ssl
