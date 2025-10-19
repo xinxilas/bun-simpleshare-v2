@@ -125,18 +125,22 @@ O bun deve criar as pastas se ainda não estiver criadas(e não quebrar se ja es
     - **Hierarquia HTML**: Estruturar o HTML para minimizar CSS, aproveitando `>` e atributos combinados. E revisar quando necessário.
     - **Princípio**: Brevidade e eficiência sobre convenções tradicionais.
 
-#### 2. UI e UX front end
-- **Estilo**: TXTs/notepad, bordas finas, pouca sombra, pouco arredondamento.
-- **Navegação**: Abas principais no topo com emojis: "📝 Txts" (padrão) e "📁 Uploads".
-- **Aba Arquivos**: Grid de cards para listar arquivos (nome, tamanho, download e delete), botão customizado para upload.
-- **Aba Textos**: Abas para cada "arquivo", após a última um botão `+` para novo. Ao abrir a aba Txts, seleciona automaticamente o primeiro texto. Ao clicar em `+`, cria automaticamente arquivo "new" (ou "new2", "new3" se já existir).
-- **Autenticação**: Ao carregar, tenta validar sessão (`GET /auth`). Se inválida, prompt em loop até senha correta. Implementar `authLoop()` com fetch POST para `/login`, headers JSON, body {password}, break no success.
-- **Debounce Visual**: 1.5s na edição do texto(ou nome), barra de progresso que preenche progressivamente (interval 50ms), para em 100% ao salvar, reseta após 500ms.
+#### 2. Design System e UX
+- **Estilo Visual**: Minimalista tipográfico, fonte monospace, contraste alto (#333/#fff), bordas sutis (#999), hover suave (0.2s), feedback visual imediato.
+- **Botões**: Estilo unificado replicável via atributo `[btn]` - borda, padding, hover/active states, transições. Evitar inline styles exceto casos únicos.
+- **Layout Horizontal**: Abas e controles lado a lado (flexbox), não empilhados. Aproveitar viewport height (`height:100%`, `flex:1`, `min-height:0`).
+- **Espaçamento Simétrico**: Gap/padding consistentes (10px/15px), evitar margins isolados, usar flexbox gaps.
+- **Navegação**: Abas principais topo: "📝 Txts" (padrão), "📁 Uploads". Sub-abas horizontais para textos individuais.
+- **Aba Textos**: Abas horizontais para cada texto, botão `+` ao final. Auto-seleciona primeiro texto ao abrir. Cria "new/new2/new3" automaticamente.
+- **Autenticação**: Valida sessão (`GET /auth`) antes de prompt. Loop até senha correta.
+- **Feedback Save**: Progress bar 1.5s com preenchimento visual (interval 50ms), aba fica verde ao salvar, reseta após 500ms. A cada input reseta debounce E progress bar (width:0, restart interval).
 
-#### 3. Sintaxe PetiteVue (IMPORTANTE)
+#### 3. Sintaxe PetiteVue e Reatividade Segura
 - **CORRETO**: `<body v-scope>` + `PetiteVue.createApp({...}).mount()` no script
 - **ERRADO**: `<body v-scope="{...}">` (causa erro de sintaxe no template)
-- Manter JavaScript limpo no `<script>`, não inline no HTML
+- **Null-Safety em v-model**: Usar `:value` + `@input` com optional chaining quando objeto pode ser null: `:value="obj?.prop||''"` + `@input="obj && (obj.prop=$event.target.value,saveFunc())"`
+- **Bindings Seguros**: Usar `obj?.prop` (não `obj.prop`) em `:class`, interpolações, quando objeto pode ser null durante render/delete
+- **Delete Limpo**: Limpar timers (clearTimeout/clearInterval) antes de setar objeto como null, previne race conditions
 
 ## Troubleshooting
 
