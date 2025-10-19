@@ -43,12 +43,15 @@ O bun deve criar as pastas se ainda não estiver criadas(e não quebrar se ja es
 
 ### 2. Autenticação
 - **Login**: `POST /login`, password hardcoded no docker-compose, sessão de cookie `sid` (UUID) `HttpOnly`.
-- **Verificação**: Validação `sid` retorna `200 OK`, `401` caso contrário.
+- **Cookie**: `sid=${sid}; HttpOnly; Path=/; Max-Age=1800; SameSite=Lax${SSL ? '; Secure' : ''}`
+- **Verificação**: `GET /auth` retorna `200 OK` ou `401`, valida cookie no backend
 - **Sessão**: `Map` em memória, valida `IP` e `User-Agent`. Expira em 30 minutos.
+- **Frontend**: Ao carregar, primeiro tenta `GET /auth`. Se 200→authed, se 401→pede senha.
 
 ### 3. Rotas
 - `GET /` → `index.html`
-- `POST /login` → cria sessão
+- `POST /login` → cria sessão, retorna cookie
+- `GET /auth` → valida sessão existente (200/401)
 - `POST /upload` → salva em `/data/uploads/` (max 50MB, multipart field `file`)
 - `GET /files` → lista arquivos [{name, size}]
 - `GET /files/:name` → download
@@ -124,11 +127,11 @@ O bun deve criar as pastas se ainda não estiver criadas(e não quebrar se ja es
 
 #### 2. UI e UX front end
 - **Estilo**: TXTs/notepad, bordas finas, pouca sombra, pouco arredondamento.
-- **Navegação**: Abas principais no topo: "Uploads" e "Txts".
-- **Aba Arquivos**: Grid de cards para listar arquivos (nome, tamanho, download e delete), um card para upload.
-- **Aba Textos**: Abas para cada "arquivo", após a ultime um botão `+` para novo. Ao selecionar arquivo(aba), ter o nome, conteúdo(textbox), checkbox "público" e botão de delete
-- **Autenticação**: prompt em loop até senha correta (sem página inicial). Implementar `authLoop()` com fetch POST para `/login`, headers JSON, body {password}, break no success.
-- **Debounce Visual**: 1.5s na edição do texto(ou nome), barra de progresso sutil no bottom do textbox indicando o salvamento automático iminente.
+- **Navegação**: Abas principais no topo com emojis: "📝 Txts" (padrão) e "📁 Uploads".
+- **Aba Arquivos**: Grid de cards para listar arquivos (nome, tamanho, download e delete), botão customizado para upload.
+- **Aba Textos**: Abas para cada "arquivo", após a última um botão `+` para novo. Ao abrir a aba Txts, seleciona automaticamente o primeiro texto. Ao clicar em `+`, cria automaticamente arquivo "new" (ou "new2", "new3" se já existir).
+- **Autenticação**: Ao carregar, tenta validar sessão (`GET /auth`). Se inválida, prompt em loop até senha correta. Implementar `authLoop()` com fetch POST para `/login`, headers JSON, body {password}, break no success.
+- **Debounce Visual**: 1.5s na edição do texto(ou nome), barra de progresso que preenche progressivamente (interval 50ms), para em 100% ao salvar, reseta após 500ms.
 
 #### 3. Sintaxe PetiteVue (IMPORTANTE)
 - **CORRETO**: `<body v-scope>` + `PetiteVue.createApp({...}).mount()` no script
