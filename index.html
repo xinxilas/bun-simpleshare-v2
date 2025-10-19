@@ -8,79 +8,87 @@
 <script src="https://unpkg.com/petite-vue@0.4.1/dist/petite-vue.iife.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:monospace;background:#f5f5f5;padding:10px;font-size:14px;line-height:1.5}
+html,body{height:100%;overflow:hidden}
+body{font-family:monospace;background:#f5f5f5;padding:10px;font-size:14px;line-height:1.5;max-width:1200px;margin:0 auto;display:flex;flex-direction:column}
 [v-cloak]{display:none}
-[BTN]{cursor:pointer!important;border:1px solid #999!important;padding:8px 14px!important;background:#fff!important;border-radius:2px!important;display:inline-block!important;font-size:14px!important;transition:background 0.2s,border-color 0.2s!important;text-decoration:none!important;color:#333!important}
-[BTN]:hover{background:#e0e0e0!important;border-color:#777!important}
-[BTN]:active{background:#d0d0d0!important}
-[FLEXR]{display:flex;gap:10px;flex-wrap:wrap}
-[FLEXC]{display:flex;flex-direction:column;gap:10px}
+[btn]{cursor:pointer;border:1px solid #999;padding:8px 14px;background:#fff;border-radius:2px;display:inline-block;font-size:14px;transition:background 0.2s,border-color 0.2s;text-decoration:none;color:#333}
+[btn]:hover{background:#e0e0e0;border-color:#777}
+[btn]:active{background:#d0d0d0}
+[flexr]{display:flex;gap:10px;flex-wrap:wrap}
+[flexc]{display:flex;flex-direction:column;gap:10px}
+.main-content{display:flex;flex-direction:column;flex:1;min-height:0}
 .card{border:1px solid #ccc;padding:15px;background:#fff;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,0.05)}
-.tab{border:1px solid #999;padding:8px 16px;background:#fff;cursor:pointer;border-radius:2px 2px 0 0;border-bottom:none;font-size:14px;white-space:nowrap}
+.text-card{display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0;background:#fff;border:1px solid #ccc;border-top:none;border-radius:0 0 2px 2px;padding:15px}
+.tab{border:1px solid #999;padding:8px 16px;background:#fff;cursor:pointer;border-radius:2px 2px 0 0;border-bottom:none;font-size:14px;white-space:nowrap;transition:background 0.2s,border-color 0.2s}
+.tab:hover{background:#e0e0e0;border-color:#777}
 .tab.actv{background:#e0e0e0;font-weight:bold}
-.tabs-container{border-bottom:1px solid #999;margin-bottom:15px;display:flex;gap:2px;flex-wrap:wrap}
-.progress-bar{height:3px;background:#e0e0e0;position:relative;margin-top:5px;border-radius:2px;overflow:hidden}
+.tab.saved{background:#c8e6c9;border-color:#4caf50}
+.tabs-container{border-bottom:1px solid #999;margin-bottom:0;display:flex;gap:2px;flex-wrap:wrap}
+.main-tabs{margin-bottom:15px}
+.progress-bar{height:3px;background:#e0e0e0;position:relative;border-radius:2px;overflow:hidden}
 .progress-fill{height:100%;background:#4caf50;width:0%;transition:none}
-.textarea-wrapper{position:relative}
-textarea{width:100%;font-family:monospace;border:1px solid #999;padding:10px;resize:vertical;border-radius:2px;font-size:14px}
-input[type="text"]{width:100%;border:1px solid #999;padding:8px;font-family:monospace;border-radius:2px;font-size:14px}
+.textarea-wrapper{display:flex;flex-direction:column;flex:1;min-height:0}
+textarea{width:100%;flex:1;font-family:monospace;border:1px solid #999;padding:10px;resize:none;border-radius:2px;font-size:14px;min-height:200px}
+input[type="text"]{border:1px solid #999;padding:8px;font-family:monospace;border-radius:2px;font-size:14px;flex:1}
 input[type="file"]{border:1px solid #999;padding:6px;border-radius:2px;font-size:14px}
 input[type="checkbox"]{cursor:pointer;margin-right:6px}
 label{cursor:pointer;font-size:14px;display:flex;align-items:center}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
 .upload-section{margin-bottom:15px}
-.text-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.text-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.texts-wrapper{display:flex;flex-direction:column;flex:1;overflow:hidden;min-height:0}
+.footer{text-align:center;padding:10px;font-size:12px;color:#666;border-top:1px solid #ddd;margin-top:10px}
 </style>
 </head>
 <body v-scope @vue:mounted="authLoop" v-cloak>
 
-<div v-if="authed">
-    <div class="tabs-container">
-        <div class="tab" :class="{actv: mainTab==='texts'}" @click="mainTab='texts'; if (texts.length && !currentText) openText(texts[0].name)">📝 Txts</div>
-        <div class="tab" :class="{actv: mainTab==='uploads'}" @click="mainTab='uploads'">📁 Uploads</div>
+<div v-if="authed" class="main-content">
+    <div class="tabs-container main-tabs">
+        <div class="tab" :class="{actv: mainTab==='texts'}" @click="mainTab='texts'; savedTab=null; if (texts.length && !currentText) openText(texts[0].name)">📝 Txts</div>
+        <div class="tab" :class="{actv: mainTab==='uploads'}" @click="mainTab='uploads'; savedTab=null">📁 Uploads</div>
     </div>
 
-    <div v-if="mainTab==='uploads'" [FLEXC]>
+    <div v-if="mainTab==='uploads'" flexc>
         <div class="card upload-section">
-            <label [BTN] style="display:inline-block">
+            <label btn style="display:inline-block">
                 📤 Choose File
                 <input type="file" @change="uploadFile" style="display:none">
             </label>
         </div>
         <div class="grid">
-            <div v-for="f in files" class="card" [FLEXC]>
+            <div v-for="f in files" class="card" flexc>
                 <strong>{{f.name}}</strong>
                 <span>{{formatSize(f.size)}}</span>
-                <div [FLEXR]>
-                    <a :href="'/files/'+f.name" download [BTN]>⬇️ Download</a>
-                    <span [BTN] @click="deleteFile(f.name)">🗑️ Delete</span>
+                <div flexr>
+                    <a :href="'/files/'+f.name" download btn>⬇️ Download</a>
+                    <span btn @click="deleteFile(f.name)">🗑️ Delete</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <div v-if="mainTab==='texts'" [FLEXC]>
+    <div v-if="mainTab==='texts'" class="texts-wrapper">
         <div class="tabs-container">
-            <div v-for="t in texts" class="tab" :class="{actv: currentText?.name===t.name}" @click="openText(t.name)">
+            <div v-for="t in texts" class="tab" :class="{actv: currentText?.name===t.name, saved: savedTab===t.name}" @click="openText(t.name)">
                 {{t.name}}
             </div>
             <div class="tab" @click="newText">+</div>
         </div>
 
-        <div v-if="currentText" class="card" [FLEXC]>
-            <input type="text" v-model="currentText.name" @input="onTextChange" placeholder="Text name">
-            <div class="textarea-wrapper">
-                <textarea v-model="currentText.content" @input="onTextChange" rows="15"></textarea>
-                <div class="progress-bar">
-                    <div class="progress-fill" :style="{width: progressWidth + '%'}"></div>
-                </div>
-            </div>
+        <div v-if="currentText" class="text-card">
             <div class="text-controls">
-                <label [BTN]>
+                <input type="text" v-model="currentText.name" @input="onTextChange" placeholder="Text name">
+                <label btn>
                     <input type="checkbox" v-model="currentText.open" @change="onTextChange">
                     <span>🌐 Public</span>
                 </label>
-                <span [BTN] @click="deleteText(currentText.name)">🗑️ Delete</span>
+                <span btn @click="deleteText(currentText.name)">🗑️ Delete</span>
+            </div>
+            <div class="textarea-wrapper">
+                <textarea v-model="currentText.content" @input="onTextChange"></textarea>
+                <div class="progress-bar">
+                    <div class="progress-fill" :style="{width: progressWidth + '%'}"></div>
+                </div>
             </div>
         </div>
         <div v-else-if="texts.length === 0" class="card">
@@ -88,6 +96,8 @@ label{cursor:pointer;font-size:14px;display:flex;align-items:center}
         </div>
     </div>
 </div>
+
+<div class="footer">ITLatam renatop</div>
 
 <script>
 PetiteVue.createApp({
@@ -99,6 +109,7 @@ PetiteVue.createApp({
     debounceTimer: null,
     progressInterval: null,
     progressWidth: 0,
+    savedTab: null,
 
     async authLoop() {
         try {
@@ -183,11 +194,12 @@ PetiteVue.createApp({
     },
 
     async openText(name) {
+        this.savedTab = null;
         try {
             const res = await fetch(`/txt/${name}`);
             if (res.ok) {
                 const data = await res.json();
-                this.currentText = {...data, name};
+                this.currentText = {...data, name, originalName: name};
             }
         } catch (e) {
             console.error(e);
@@ -216,8 +228,18 @@ PetiteVue.createApp({
 
     async saveText() {
         if (!this.currentText?.name) return;
+        
+        const oldName = this.currentText.originalName || this.currentText.name;
+        const newName = this.currentText.name;
+        
         try {
-            await fetch(`/txt/${this.currentText.name}`, {
+            // Se mudou o nome, deletar o arquivo antigo
+            if (oldName !== newName) {
+                await fetch(`/txt/${oldName}`, {method: 'DELETE'});
+            }
+            
+            // Salvar com o nome novo (ou mesmo)
+            await fetch(`/txt/${newName}`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
@@ -225,8 +247,15 @@ PetiteVue.createApp({
                     open: this.currentText.open
                 })
             });
+            
+            // Atualizar originalName para o nome atual
+            this.currentText.originalName = newName;
+            
             await this.loadTexts();
-            setTimeout(() => { this.progressWidth = 0; }, 500);
+            this.savedTab = newName;
+            setTimeout(() => { 
+                this.progressWidth = 0;
+            }, 500);
         } catch (e) {
             console.error(e);
             this.progressWidth = 0;
@@ -234,6 +263,7 @@ PetiteVue.createApp({
     },
 
     async newText() {
+        this.savedTab = null;
         let name = 'new';
         let counter = 1;
         const existingNames = this.texts.map(t => t.name);
@@ -243,7 +273,7 @@ PetiteVue.createApp({
             name = `new${counter}`;
         }
         
-        this.currentText = {name, content: '', open: false};
+        this.currentText = {name, content: '', open: false, originalName: name};
         await this.saveText();
     },
 
