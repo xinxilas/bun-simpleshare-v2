@@ -58,9 +58,10 @@ O bun deve criar as pastas se ainda não estiver criadas(e não quebrar se ja es
 - `DELETE /files/:name` → deleta arquivo
 - `POST /txt/:name` → salva em `/data/texts/:name.txt` com JSON `{content, name, open?}`
 - `GET /txt/:name` → retorna "txt". Se header `Accept: application/json` → JSON completo. Senão (browser) → `content` como plain text. Público se `open:1` no metadata.
+- `GET /h/:name` → retorna txt público como `text/html` se `.html` no nome. Permite servir HTML públicos diretamente no browser.
 - `GET /txts` → lista textos [{name, open}]
 - `DELETE /txt/:name` → deleta texto
-- Auth em todas exceto `/`, `/login`, textos públicos
+- Auth em todas exceto `/`, `/login`, textos públicos, `/h/:name`
 
 ### 4. Metadata textos públicos
 - Arquivo `/data/texts/.meta.json`: `{[name]: {open: 1}}`
@@ -90,7 +91,7 @@ O bun deve criar as pastas se ainda não estiver criadas(e não quebrar se ja es
 ```
 
 ## Estilo de código (Javascript do BUN, e do frontend no PetiteVue)
-
+**Princípio**: Brevidade e eficiência mas sem **Sem minimificação**.
 - Ternários em atribuições, aninhar 2-3 níveis se legível
 - Short-circuit: `value || default`, `condition && execute()`, `obj?.prop ?? fallback`
 - Destructuring inline: `const {ip, headers} = req`, entre outros
@@ -106,7 +107,7 @@ O bun deve criar as pastas se ainda não estiver criadas(e não quebrar se ja es
 - Evitar variáveis intermediárias óbvias
 - Top-level await para inicialização
 - Resumindo o principio: Brevidade e eficiência sobre convenções tradicionais
-- Sem minimificação.
+
 
 ## Frontend (index.html)
 
@@ -133,7 +134,8 @@ O bun deve criar as pastas se ainda não estiver criadas(e não quebrar se ja es
 - **Navegação**: Abas principais topo: "📝 Txts" (padrão), "📁 Uploads". Sub-abas horizontais para textos individuais.
 - **Aba Textos**: Abas horizontais, aba botão `+` que cira arquivo nome "new" e "new2/new3". Fetch header `Accept: application/json` para receber JSON completo.
 - **Autenticação**: Valida sessão (`GET /auth`) antes de prompt. Loop até senha correta.
-- **Feedback Save**: Progress bar 1.5s com preenchimento visual (interval 50ms), aba fica verde ao salvar, reseta após 500ms. A cada input reseta debounce E progress bar (width:0, restart interval).
+- **Feedback Save**: Progress bar 6px altura com preenchimento visual (interval 50ms), aba fica verde ao salvar, reseta após 500ms. A cada input reseta debounce E progress bar (width:0, restart interval).
+- **URLs Públicos**: Quando txt é público (`open:1`), exibir links clicáveis para `/txt/:name` e `/h/:name` (se `.html`). Mostrar em div dedicada abaixo do textarea.
 
 #### 3. Sintaxe PetiteVue e Reatividade Segura
 - **CORRETO**: `<body v-scope>` + `PetiteVue.createApp({...}).mount()` no script
