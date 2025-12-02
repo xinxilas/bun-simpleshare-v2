@@ -157,6 +157,18 @@ Bun.serve({
             }
         }
 
+        // HTML público (sem auth) - arquivos .html públicos servidos como HTML
+        if (path.startsWith('/h/') && method === 'GET') {
+            const name = sanitize(path.split('/')[2]);
+            const htmlName = name.endsWith('.html') ? name.slice(0, -5) : name;
+            const txtPath = `${textsDir}/${htmlName}.html.txt`;
+            if (textsMeta[`${htmlName}.html`]?.open && existsSync(txtPath)) {
+                const data = JSON.parse(readFileSync(txtPath, 'utf8'));
+                return new Response(data.content, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+            }
+            return new Response('Not Found', { status: 404 });
+        }
+
         // Verificar autenticação para rotas protegidas
         if (!auth(req)) return new Response('Unauthorized', { status: 401 });
 
