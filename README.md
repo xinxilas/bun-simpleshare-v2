@@ -2,7 +2,7 @@
 
 Sistema minimalista de upload/compartilhamento usando Bun + Docker, zero bibliotecas externas.
 
-![SimpleShare Screenshot](docs/screenshot.png)
+![SimpleShare Screenshot](docs/screenshot1.png)
 
 > **⚠️ Projeto Educacional**: Este projeto foi criado para aprender e experimentar com Bun, Docker e prompts replicáveis para IA. **Não segue melhores práticas de produção** (segurança, escalabilidade, etc). Use apenas para estudos e ambientes pessoais.
 
