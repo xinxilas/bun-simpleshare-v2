@@ -6,13 +6,25 @@ const dataDir = '/data';
 const uploadsDir = `${dataDir}/uploads`;
 const textsDir = `${dataDir}/texts`;
 const sslDir = '/ssl';
-const metaFile = `${textsDir}/.meta.json`;
+const textsMetaFile = `${textsDir}/.meta.json`;
+const uploadsMetaFile = `${uploadsDir}/.meta.json`;
 
 // Criar diretórios se não existirem
 [uploadsDir, textsDir, sslDir].forEach(dir => !existsSync(dir) && mkdirSync(dir, { recursive: true }));
 
 // Carregar metadata
-let textsMeta = existsSync(metaFile) ? JSON.parse(readFileSync(metaFile, 'utf-8')) : {};
+let textsMeta = existsSync(textsMetaFile) ? JSON.parse(readFileSync(textsMetaFile, 'utf-8')) : {};
+let uploadsMeta = existsSync(uploadsMetaFile) ? JSON.parse(readFileSync(uploadsMetaFile, 'utf-8')) : {};
+
+// MIME types para Content-Type correto
+const mimeTypes = {
+    '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript',
+    '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.svg': 'image/svg+xml',
+    '.webp': 'image/webp', '.ico': 'image/x-icon', '.pdf': 'application/pdf',
+    '.mp4': 'video/mp4', '.webm': 'video/webm', '.mp3': 'audio/mpeg',
+    '.wav': 'audio/wav', '.txt': 'text/plain', '.xml': 'application/xml'
+};
 
 // Sessões em memória
 const sessions = new Map();
@@ -169,6 +181,18 @@ Bun.serve({
             return new Response('Not Found', { status: 404 });
         }
 
+        // Upload público (sem auth) - arquivos marcados como públicos
+        if (path.startsWith('/up/') && method === 'GET') {
+            const name = sanitize(path.split('/')[2]);
+            const filePath = `${uploadsDir}/${name}`;
+            if (uploadsMeta[name]?.open && existsSync(filePath)) {
+                const ext = '.' + name.split('.').pop()?.toLowerCase();
+                const contentType = mimeTypes[ext] || 'application/octet-stream';
+                return new Response(Bun.file(filePath), { headers: { 'Content-Type': contentType } });
+            }
+            return new Response('Not Found', { status: 404 });
+        }
+
         // Verificar autenticação para rotas protegidas
         if (!auth(req)) return new Response('Unauthorized', { status: 401 });
 
@@ -190,11 +214,21 @@ Bun.serve({
                 .filter(name => !name.startsWith('.'))
                 .map(name => ({ 
                     name, 
-                    size: statSync(`${uploadsDir}/${name}`).size 
+                    size: statSync(`${uploadsDir}/${name}`).size,
+                    open: uploadsMeta[name]?.open || 0
                 }));
             return new Response(JSON.stringify(files), { 
                 headers: { 'Content-Type': 'application/json' } 
             });
+        }
+
+        // Toggle público arquivo
+        if (path.startsWith('/files/') && method === 'PATCH') {
+            const name = sanitize(path.split('/')[2]);
+            const { open } = await req.json();
+            uploadsMeta[name] = { open: open ? 1 : 0 };
+            writeFileSync(uploadsMetaFile, JSON.stringify(uploadsMeta));
+            return new Response('OK');
         }
 
         // Download arquivo
@@ -210,6 +244,8 @@ Bun.serve({
             const name = sanitize(path.split('/')[2]);
             const filePath = `${uploadsDir}/${name}`;
             if (existsSync(filePath)) unlinkSync(filePath);
+            delete uploadsMeta[name];
+            writeFileSync(uploadsMetaFile, JSON.stringify(uploadsMeta));
             return new Response('OK');
         }
 
@@ -219,7 +255,7 @@ Bun.serve({
             const { content, open } = await req.json();
             writeFileSync(`${textsDir}/${name}.txt`, JSON.stringify({ content, open }));
             textsMeta[name] = { open: open ? 1 : 0 };
-            writeFileSync(metaFile, JSON.stringify(textsMeta));
+            writeFileSync(textsMetaFile, JSON.stringify(textsMeta));
             return new Response('OK');
         }
 
@@ -257,7 +293,7 @@ Bun.serve({
             const txtPath = `${textsDir}/${name}.txt`;
             if (existsSync(txtPath)) unlinkSync(txtPath);
             delete textsMeta[name];
-            writeFileSync(metaFile, JSON.stringify(textsMeta));
+            writeFileSync(textsMetaFile, JSON.stringify(textsMeta));
             return new Response('OK');
         }
 

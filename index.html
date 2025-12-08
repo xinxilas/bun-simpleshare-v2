@@ -80,9 +80,16 @@
             <div v-for="f in files" class="card" flexc>
                 <strong>{{f.name}}</strong>
                 <span>{{formatSize(f.size)}}</span>
-                <div flexr>
+                <div flexr style="align-items:center">
+                    <label style="font-size:13px">
+                        <input type="checkbox" :checked="f.open" @change="toggleFilePublic(f.name, $event.target.checked)">
+                        🌐 Public
+                    </label>
                     <a :href="'/files/'+f.name" download btn>⬇️ Download</a>
                     <span btn @click="deleteFile(f.name)">🗑️ Delete</span>
+                </div>
+                <div v-if="f.open" class="public-links">
+                    🌐 <a :href="'/up/' + f.name" target="_blank">{{location.origin}}/up/{{f.name}}</a>
                 </div>
             </div>
         </div>
@@ -179,6 +186,10 @@ PetiteVue.createApp({
     async deleteFile(name) {
         if (!confirm(`Delete ${name}?`)) return;
         try { await fetch(`/files/${name}`, {method: 'DELETE'}); await this.loadFiles(); }
+        catch (e) { console.error(e); }
+    },
+    async toggleFilePublic(name, open) {
+        try { await fetch(`/files/${name}`, {method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({open})}); await this.loadFiles(); }
         catch (e) { console.error(e); }
     },
     async openText(name) {

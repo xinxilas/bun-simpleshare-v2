@@ -53,19 +53,22 @@ O bun deve criar as pastas se ainda não estiver criadas(e não quebrar se ja es
 - `POST /login` → cria sessão, retorna cookie
 - `GET /auth` → valida sessão existente (200/401)
 - `POST /upload` → salva em `/data/uploads/` (max 50MB, multipart field `file`)
-- `GET /files` → lista arquivos [{name, size}]
+- `GET /files` → lista arquivos [{name, size, open}]
 - `GET /files/:name` → download
+- `PATCH /files/:name` → toggle público `{open: true/false}`, atualiza `/data/uploads/.meta.json`
 - `DELETE /files/:name` → deleta arquivo
+- `GET /up/:name` → **público**: serve arquivo de uploads se `open:1`. Content-Type automático (imagens abrem no browser, não forçam download). MIME types: `.png→image/png`, `.jpg→image/jpeg`, `.pdf→application/pdf`, etc.
 - `POST /txt/:name` → salva em `/data/texts/:name.txt` com JSON `{content, name, open?}`
 - `GET /txt/:name` → retorna "txt". Se header `Accept: application/json` → JSON completo. Senão (browser) → `content` como plain text. Público se `open:1` no metadata.
 - `GET /h/:name` → retorna txt público como `text/html` se `.html` no nome. Permite servir HTML públicos diretamente no browser.
 - `GET /txts` → lista textos [{name, open}]
 - `DELETE /txt/:name` → deleta texto
-- Auth em todas exceto `/`, `/login`, textos públicos, `/h/:name`
+- Auth em todas exceto `/`, `/login`, textos públicos, `/h/:name`, `/up/:name`
 
-### 4. Metadata textos públicos
-- Arquivo `/data/texts/.meta.json`: `{[name]: {open: 1}}`
-- Carregar no início, atualizar ao salvar texto com ou sem `open:1`
+### 4. Metadata públicos
+- Textos: `/data/texts/.meta.json`: `{[name]: {open: 1}}`
+- Uploads: `/data/uploads/.meta.json`: `{[name]: {open: 1}}`
+- Carregar ambos no início, atualizar ao toggle
 
 ### 5. Sanitização (no backend)
 - Regex: para rever nomes invalidos que podem bugar, ex: `name.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 100)`
@@ -135,7 +138,8 @@ O bun deve criar as pastas se ainda não estiver criadas(e não quebrar se ja es
 - **Aba Textos**: Abas horizontais, aba botão `+` que cira arquivo nome "new" e "new2/new3". Fetch header `Accept: application/json` para receber JSON completo.
 - **Autenticação**: Valida sessão (`GET /auth`) antes de prompt. Loop até senha correta.
 - **Feedback Save**: Progress bar 6px altura com preenchimento visual (interval 50ms), aba fica verde ao salvar, reseta após 500ms. A cada input reseta debounce E progress bar (width:0, restart interval).
-- **URLs Públicos**: Quando txt é público (`open:1`), exibir links clicáveis para `/txt/:name` e `/h/:name` (se `.html`). Mostrar em div dedicada abaixo do textarea.
+- **URLs Públicos Textos**: Quando txt é público (`open:1`), exibir links clicáveis para `/txt/:name` e `/h/:name` (se `.html`). Mostrar em div dedicada abaixo do textarea.
+- **Aba Uploads**: Grid de cards com checkbox 🌐 Public. Ao toggle, `PATCH /files/:name {open}`. Quando público, exibir URL clicável `/up/:name` no card.
 
 #### 3. Sintaxe PetiteVue e Reatividade Segura
 - **CORRETO**: `<body v-scope>` + `PetiteVue.createApp({...}).mount()` no script
